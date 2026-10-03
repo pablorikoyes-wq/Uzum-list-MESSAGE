@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Подпишись и получи доступ</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg: #17212b;
+    --card: #232e3c;
+    --text: #f5f5f5;
+    --hint: #708499;
+    --accent: #6ab3f3;
+    --accent-2: #5288c1;
+    --success: #4caf50;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    min-height: 100%;
+    overflow-x: hidden;
+  }
+  .wrap {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 20px 16px 32px;
+  }
+  .title {
+    font-size: 24px;
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 6px;
+  }
+  .title .accent {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--accent);
+  }
+  .title .accent svg { width: 20px; height: 20px; }
+
+  .progress { margin: 16px 0 20px; }
+  .progress-hint { font-size: 13px; color: var(--hint); margin-bottom: 8px; }
+  .progress-track {
+    position: relative;
+    height: 10px;
+    background: #2b3846;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent-2), var(--accent));
+    border-radius: 999px;
+    transition: width .4s ease;
+  }
+  .progress-percent {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: .5px;
+  }
+
+  .list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .card {
+    display: flex;
+    align-items: center;
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 12px;
+    gap: 12px;
+    transition: transform .15s ease, opacity .3s ease;
+  }
+  .card:active { transform: scale(.98); }
+  .card.done { opacity: .6; }
+
+  /* === АВАТАРКА КАНАЛА === */
+  .card-icon-wrap {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    background: linear-gradient(135deg, #2b3846, #3b4a5a);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+  }
+  .card-icon-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .card-icon-emoji {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    font-size: 22px;
+  }
+
+  .card-copy { flex: 1; min-width: 0; }
+  .card-title {
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .card-desc {
+    font-size: 12px;
+    color: var(--hint);
+    line-height: 1.3;
+  }
+
+  .card-btn {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent-2);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background .15s ease, transform .15s ease;
+  }
+  .card-btn:active { transform: scale(.92); }
+  .card-btn svg { width: 20px; height: 20px; }
+  .card-btn.done { background: var(--success); pointer-events: none; }
+  .card-btn.loading { background: #3b4a5a; pointer-events: none; }
+  .card-btn.loading svg { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .final {
+    margin-top: 24px;
+    width: 100%;
+    padding: 16px;
+    border: none;
+    border-radius: var(--radius);
+    background: linear-gradient(135deg, var(--accent-2), var(--accent));
+    color: #fff;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: .3px;
+    cursor: pointer;
+    display: none;
+  }
+  .final.show { display: block; animation: pop .35s ease; }
+  @keyframes pop {
+    from { opacity: 0; transform: scale(.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="title">
+    подпишись на все каналы
+    <span class="accent">
+      и получи доступ
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="5" y="11" width="14" height="10" rx="2"/>
+        <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+      </svg>
+    </span>
+  </h1>
+
+  <div class="progress">
+    <div class="progress-hint" id="hint">отличное начало!</div>
+    <div class="progress-track">
+      <div class="progress-fill" id="fill"></div>
+      <div class="progress-percent" id="percent">0%</div>
+    </div>
+  </div>
+
+  <ul class="list" id="list"></ul>
+
+  <button class="final" id="finalBtn">продолжить →</button>
+</div>
+
+<script>
+// ============================================================
+//  КАНАЛЫ — МЕНЯЙ ЗДЕСЬ
+//  chatId  — ID канала (для получения аватарки и проверки подписки)
+//  icon    — (опционально) прямая ссылка на картинку, если не хочешь брать с Telegram
+//  emoji   — (опционально) эмодзи-заглушка, если аватарка не загрузится
+//  type    — "private" (проверка через бота) или "public" (просто открыть)
+// ============================================================
+const CHANNELS = [
+  {
+    id: "ch1",
+    chatId: "-1003994109406",
+    name: "💎Strategiya Markazi💎",
+    desc: "подай заявку",
+    url: "https://t.me/+p7EieKdzY4k5YWFi",
+    type: "private",
+    emoji: "💎"
+  },
+  {
+    id: "ch2",
+    chatId: "-1002384200930",
+    name: "ISH HAMMAGA 🇺🇿💰",
+    desc: "подай заявку",
+    url: "https://t.me/+qFADecfIL541NzAy",
+    type: "private",
+    emoji: "💰"
+  },
+  {
+    id: "ch3",
+    chatId: "-1000000000000", // ← замени на настоящий ID канала "Isbot To'lovlari"
+    name: "Isbot To'lovlari",
+    desc: "подпишись",
+    url: "https://t.me/+KShenBu1rkEwOWFi",
+    type: "public",
+    emoji: "📢"
+  }
+];
+
+// ============================================================
+//  НАСТРОЙКИ
+// ============================================================
+// Базовый URL бэкенда (Cloudflare Worker → Flask)
+const BACKEND = "https://uzum-list.pablorikoyes.workers.dev";
+
+// Куда вести после прохождения всех каналов
+const NEXT_URL = "https://pablorkoyes-wq.github.io/uzum-list/";
+
+// ============================================================
+//  ДАЛЬШЕ НИЧЕГО НЕ МЕНЯЙ
+// ============================================================
+
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+
+const state = {};
+CHANNELS.forEach(ch => state[ch.id] = false);
+
+const listEl = document.getElementById("list");
+const fillEl = document.getElementById("fill");
+const percentEl = document.getElementById("percent");
+const hintEl = document.getElementById("hint");
+const finalBtn = document.getElementById("finalBtn");
+
+// ==== Формируем URL аватарки канала ====
+function getAvatarUrl(ch) {
+  if (ch.icon) return ch.icon;               // явная ссылка
+  if (ch.chatId) return `${BACKEND}/api/channel_avatar/${ch.chatId}`;
+  return null;
+}
+
+function renderList() {
+  listEl.innerHTML = "";
+  CHANNELS.forEach(ch => {
+    const li = document.createElement("li");
+    li.className = "card";
+    li.dataset.id = ch.id;
+
+    const avatarUrl = getAvatarUrl(ch);
+    // Изначально рендерим эмодзи-заглушку, а img подгружается сверху.
+    // Если img не загрузится — останется эмодзи.
+    const iconHTML = `
+      <div class="card-icon-wrap">
+        <div class="card-icon-emoji" id="emoji-${ch.id}">${ch.emoji || "📢"}</div>
+        ${avatarUrl
+          ? `<img class="card-icon-img"
+                  src="${avatarUrl}"
+                  alt=""
+                  loading="lazy"
+                  onerror="this.style.display='none'"
+                  onload="const e=document.getElementById('emoji-${ch.id}'); if(e) e.style.display='none';"
+                  style="position:absolute;inset:0;">`
+          : ""}
+      </div>
+    `;
+
+    const btnLabel = ch.type === "public" ? "Открыть" : "Проверить";
+    const btnIcon = ch.type === "public"
+      ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>`
+      : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`;
+
+    li.innerHTML = `
+      ${iconHTML}
+      <div class="card-copy">
+        <div class="card-title">${ch.name}</div>
+        <div class="card-desc">${ch.desc}</div>
+      </div>
+      <button class="card-btn" data-action="${ch.type}" title="${btnLabel}">
+        ${btnIcon}
+      </button>
+    `;
+    listEl.appendChild(li);
+  });
+}
+
+function updateProgress() {
+  const total = CHANNELS.length;
+  const done = Object.values(state).filter(Boolean).length;
+  const pct = Math.round((done / total) * 100);
+  fillEl.style.width = pct + "%";
+  percentEl.textContent = pct + "%";
+
+  if (pct === 0) hintEl.textContent = "отличное начало!";
+  else if (pct < 100) hintEl.textContent = `осталось: ${total - done}`;
+  else hintEl.textContent = "всё готово 🎉";
+
+  CHANNELS.forEach(ch => {
+    const li = listEl.querySelector(`[data-id="${ch.id}"]`);
+    if (!li) return;
+    const btn = li.querySelector(".card-btn");
+    if (state[ch.id]) {
+      li.classList.add("done");
+      btn.classList.add("done");
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`;
+      btn.disabled = true;
+    }
+  });
+
+  if (done === total) {
+    finalBtn.classList.add("show");
+    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
+  } else {
+    finalBtn.classList.remove("show");
+  }
+}
+
+function openTelegramLink(url) {
+  if (!tg) { window.open(url, "_blank"); return; }
+  if (url.startsWith("https://t.me/") || url.startsWith("tg://")) {
+    tg.openTelegramLink(url);
+  } else {
+    tg.openLink(url);
+  }
+}
+
+async function checkSubscription(chatId) {
+  const userId = tg?.initDataUnsafe?.user?.id || null;
+  const initData = tg?.initData || "";
+
+  const resp = await fetch(`${BACKEND}/api/check_subscription`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: userId,
+      init_data: initData,
+      chat_id: chatId
+    })
+  });
+  const data = await resp.json();
+  return !!data.subscribed;
+}
+
+listEl.addEventListener("click", async (e) => {
+  const btn = e.target.closest(".card-btn");
+  if (!btn) return;
+  const li = btn.closest(".card");
+  const chId = li.dataset.id;
+  const ch = CHANNELS.find(c => c.id === chId);
+  if (!ch) return;
+
+  if (ch.type === "public") {
+    openTelegramLink(ch.url);
+    setTimeout(() => {
+      state[chId] = true;
+      updateProgress();
+    }, 800);
+    return;
+  }
+
+  // private: открываем канал, потом проверяем
+  openTelegramLink(ch.url);
+  btn.classList.add("loading");
+  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>`;
+
+  setTimeout(async () => {
+    try {
+      const ok = await checkSubscription(ch.chatId);
+      btn.classList.remove("loading");
+      if (ok) {
+        state[chId] = true;
+        updateProgress();
+      } else {
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`;
+        if (tg?.showAlert) tg.showAlert("Вы ещё не подписались на этот канал");
+      }
+    } catch (err) {
+      btn.classList.remove("loading");
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`;
+      if (tg?.showAlert) tg.showAlert("Ошибка проверки. Попробуйте ещё раз.");
+    }
+  }, 2500);
+});
+
+finalBtn.addEventListener("click", () => {
+  if (NEXT_URL) {
+    if (tg) tg.openLink(NEXT_URL);
+    else window.location.href = NEXT_URL;
+  }
+});
+
+renderList();
+updateProgress();
+</script>
+</body>
+</html>
