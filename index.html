@@ -172,6 +172,99 @@
     from { opacity: 0; transform: scale(.95); }
     to { opacity: 1; transform: scale(1); }
   }
+
+  /* =====================================================
+     ЭКРАН "СПАСИБО" — показывается после "davom etish"
+     ===================================================== */
+  #screen-thanks {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    z-index: 9998;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    text-align: center;
+    overflow-y: auto;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .4s ease;
+  }
+  #screen-thanks.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .thanks-check {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4caf50, #2e7d32);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 28px;
+    box-shadow: 0 8px 32px rgba(76, 175, 80, .35);
+    animation: checkPop .55s cubic-bezier(.34, 1.56, .64, 1);
+  }
+  .thanks-check svg {
+    width: 64px;
+    height: 64px;
+    stroke: #fff;
+    stroke-width: 4;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 60;
+    stroke-dashoffset: 60;
+    animation: checkDraw .6s ease .3s forwards;
+  }
+  @keyframes checkPop {
+    0%   { transform: scale(0); opacity: 0; }
+    60%  { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); }
+  }
+  @keyframes checkDraw {
+    to { stroke-dashoffset: 0; }
+  }
+
+  .thanks-title {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1.2;
+    margin-bottom: 14px;
+  }
+  .thanks-title .accent {
+    color: var(--accent);
+  }
+
+  .thanks-text {
+    font-size: 15px;
+    color: var(--hint);
+    line-height: 1.65;
+    max-width: 380px;
+    margin-bottom: 10px;
+  }
+
+  .thanks-heart {
+    font-size: 32px;
+    margin-top: 20px;
+    animation: heartBeat 1.6s ease-in-out infinite;
+  }
+  @keyframes heartBeat {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.18); }
+  }
+
+  .thanks-footer {
+    margin-top: 32px;
+    font-size: 13px;
+    color: var(--hint);
+    opacity: .7;
+  }
 </style>
 </head>
 <body>
@@ -198,6 +291,30 @@
   <ul class="list" id="list"></ul>
 
   <button class="final" id="finalBtn">davom etish →</button>
+</div>
+
+<!-- ЭКРАН "СПАСИБО" -->
+<div id="screen-thanks">
+  <div class="thanks-check">
+    <svg viewBox="0 0 24 24">
+      <path d="M4 12.5 L10 18.5 L20 6.5" />
+    </svg>
+  </div>
+  <h2 class="thanks-title">
+    <span class="accent">Rahmat!</span> Siz tekshiruvdan o'tdingiz
+  </h2>
+  <p class="thanks-text">
+    Biz tekshirdik — siz haqiqatan ham barcha homiylarimizga obuna bo'lgansiz.
+    Sizning hissangiz biz uchun juda muhim! 💚
+  </p>
+  <p class="thanks-text">
+    Yaqin orada sizga mukofotingizni yuboramiz.
+    Sabr qilganingiz uchun tashakkur!
+  </p>
+  <div class="thanks-heart">💚</div>
+  <p class="thanks-footer">
+    Quchoqlaymiz va bag'rimizga bosamiz 🤗
+  </p>
 </div>
 
 <script>
@@ -233,14 +350,13 @@ const CHANNELS = [
     name: "Isbot To'lovlari",
     desc: "obuna bo'ling",
     url: "https://t.me/+KShenBu1rkEwOWFi",
-    type: "public",   // ← проверка НЕ выполняется, сразу ✓
+    type: "public",
     emoji: "📢",
     icon: "https://i.postimg.cc/pVSsWfWx/G-a-Ola4F5WTBXE8DNI04a-Sk-GD76nh-Q7WGKUt-XNz-Z1AZEK3Lf-XVhsbpeu.jpg"
   }
 ];
 
 const BACKEND = "https://uzum-list.pablorikoyes.workers.dev";
-const NEXT_URL = "https://pablorikoyes-wq.github.io/UZUM-list/";
 
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
@@ -341,11 +457,6 @@ function openTelegramLink(url) {
   }
 }
 
-// ============================================================
-//  ПРОВЕРКА ПОДПИСКИ ЧЕРЕЗ BACKEND
-//  Отправляет запрос на Cloudflare Worker → Flask (nip.io:8083)
-//  Backend проверяет подписку через getChatMember
-// ============================================================
 async function checkSubscription(chatId) {
   const userId = tg?.initDataUnsafe?.user?.id || null;
   const initData = tg?.initData || "";
@@ -353,7 +464,7 @@ async function checkSubscription(chatId) {
   console.log("[CHECK_SUB] user_id =", userId, "chat_id =", chatId);
 
   if (!userId && !initData) {
-    console.warn("[CHECK_SUB] Нет user_id и initData — пользователь не авторизован");
+    console.warn("[CHECK_SUB] Нет user_id и initData");
     return false;
   }
 
@@ -368,21 +479,24 @@ async function checkSubscription(chatId) {
       })
     });
 
-    console.log("[CHECK_SUB] HTTP status =", resp.status);
+    console.log("[CHECK_SUB] status =", resp.status);
 
-    const data = await resp.json();
-    console.log("[CHECK_SUB] response =", data);
+    const text = await resp.text();
 
-    // Если backend вернул общий статус subscribed
+    if (!text.trim().startsWith("{")) {
+      console.error("[CHECK_SUB] Non-JSON response:", text.slice(0, 200));
+      return false;
+    }
+
+    const data = JSON.parse(text);
+    console.log("[CHECK_SUB] data =", data);
+
     if (typeof data.subscribed === "boolean") {
       return data.subscribed;
     }
-
-    // Если backend вернул список not_subscribed — смотрим, есть ли наш канал там
     if (Array.isArray(data.not_subscribed)) {
       return !data.not_subscribed.includes(chatId);
     }
-
     return false;
   } catch (err) {
     console.error("[CHECK_SUB] error:", err);
@@ -390,9 +504,6 @@ async function checkSubscription(chatId) {
   }
 }
 
-// ============================================================
-//  КЛИК ПО КНОПКЕ КАНАЛА
-// ============================================================
 listEl.addEventListener("click", async (e) => {
   const btn = e.target.closest(".card-btn");
   if (!btn) return;
@@ -436,13 +547,12 @@ listEl.addEventListener("click", async (e) => {
 });
 
 // ============================================================
-//  КНОПКА "DAVOM ETISH"
+//  "DAVOM ETISH" -> показываем экран "Спасибо"
 // ============================================================
 finalBtn.addEventListener("click", () => {
-  if (NEXT_URL) {
-    if (tg) tg.openLink(NEXT_URL);
-    else window.location.href = NEXT_URL;
-  }
+  const thanks = document.getElementById("screen-thanks");
+  thanks.classList.add("show");
+  if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
 });
 
 renderList();
