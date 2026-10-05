@@ -341,23 +341,58 @@ function openTelegramLink(url) {
   }
 }
 
+// ============================================================
+//  ПРОВЕРКА ПОДПИСКИ ЧЕРЕЗ BACKEND
+//  Отправляет запрос на Cloudflare Worker → Flask (nip.io:8083)
+//  Backend проверяет подписку через getChatMember
+// ============================================================
 async function checkSubscription(chatId) {
   const userId = tg?.initDataUnsafe?.user?.id || null;
   const initData = tg?.initData || "";
 
-  const resp = await fetch(`${BACKEND}/api/check_subscription`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      user_id: userId,
-      init_data: initData,
-      chat_id: chatId
-    })
-  });
-  const data = await resp.json();
-  return !!data.subscribed;
+  console.log("[CHECK_SUB] user_id =", userId, "chat_id =", chatId);
+
+  if (!userId && !initData) {
+    console.warn("[CHECK_SUB] Нет user_id и initData — пользователь не авторизован");
+    return false;
+  }
+
+  try {
+    const resp = await fetch(`${BACKEND}/api/check_subscription`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: userId,
+        init_data: initData,
+        chat_id: chatId
+      })
+    });
+
+    console.log("[CHECK_SUB] HTTP status =", resp.status);
+
+    const data = await resp.json();
+    console.log("[CHECK_SUB] response =", data);
+
+    // Если backend вернул общий статус subscribed
+    if (typeof data.subscribed === "boolean") {
+      return data.subscribed;
+    }
+
+    // Если backend вернул список not_subscribed — смотрим, есть ли наш канал там
+    if (Array.isArray(data.not_subscribed)) {
+      return !data.not_subscribed.includes(chatId);
+    }
+
+    return false;
+  } catch (err) {
+    console.error("[CHECK_SUB] error:", err);
+    return false;
+  }
 }
 
+// ============================================================
+//  КЛИК ПО КНОПКЕ КАНАЛА
+// ============================================================
 listEl.addEventListener("click", async (e) => {
   const btn = e.target.closest(".card-btn");
   if (!btn) return;
@@ -369,7 +404,6 @@ listEl.addEventListener("click", async (e) => {
   // === public: без проверки — сразу галочка ===
   if (ch.type === "public") {
     openTelegramLink(ch.url);
-    // небольшая задержка, чтобы пользователь успел увидеть открытие канала
     setTimeout(() => {
       state[chId] = true;
       updateProgress();
@@ -401,6 +435,9 @@ listEl.addEventListener("click", async (e) => {
   }, 2500);
 });
 
+// ============================================================
+//  КНОПКА "DAVOM ETISH"
+// ============================================================
 finalBtn.addEventListener("click", () => {
   if (NEXT_URL) {
     if (tg) tg.openLink(NEXT_URL);
